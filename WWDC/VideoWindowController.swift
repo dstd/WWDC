@@ -45,6 +45,7 @@ class VideoWindowController: NSWindowController {
     var player: AVPlayer?
     var notificationObservers: [AnyObject] = []
     var playbackStateObserver: AVPlayerPlaybackStateObserver?
+    var keysMonitorLocal, keysMonitorGlobal: AnyObject?
     
     override func windowDidLoad() {
         super.windowDidLoad()
@@ -101,8 +102,62 @@ class VideoWindowController: NSWindowController {
             
             self.removeAllObservers()
         })
+
+        setupKeyHoldObservers()
+    }
+    
+    func setupKeyHoldObservers() {
+        // use the mouse tracking as a workaround if global monitoring is not available
+        updateTrackingAreas()
+        
+        keysMonitorLocal = NSEvent.addLocalMonitorForEventsMatchingMask(NSEventMask.KeyDownMask|NSEventMask.FlagsChangedMask, handler: keyPressedLocal)
+        keysMonitorGlobal = NSEvent.addGlobalMonitorForEventsMatchingMask(NSEventMask.KeyDownMask|NSEventMask.FlagsChangedMask, handler: keyPressedGlobal)
+    }
+    
+    func keyPressedLocal(event: NSEvent!) -> NSEvent {
+        checkFullscreenQuickSwitch()
+        return event
     }
 
+    func keyPressedGlobal(event: NSEvent!) {
+        checkFullscreenQuickSwitch()
+    }
+
+    func windowDidResize(notification: NSNotification) {
+        updateTrackingAreas()
+    }
+    
+    var trackingRect: NSTrackingRectTag?
+    func updateTrackingAreas() {
+        if let trackingRect = self.trackingRect {
+            playerView!.removeTrackingRect(trackingRect)
+            self.trackingRect = nil
+        }
+        
+        trackingRect = playerView!.addTrackingRect(playerView!.bounds, owner: self, userData: nil, assumeInside: false)
+    }
+    
+    override func mouseMoved(theEvent: NSEvent) {
+        checkFullscreenQuickSwitch()
+    }
+    
+    var frameForNonFullscreenMode: CGRect?
+    func checkFullscreenQuickSwitch() {
+        let mouse = NSEvent.mouseLocation()
+        let mouseInside = NSWindow.windowNumberAtPoint(mouse, belowWindowWithWindowNumber: 0) == playerWindow.windowNumber
+        let isZoomKeyPressed = mouseInside && NSEvent.modifierFlags() & .ControlKeyMask != nil
+        
+        if isZoomKeyPressed && frameForNonFullscreenMode == nil {
+            frameForNonFullscreenMode = playerWindow.frame
+            let screen = NSScreen.screens()?.first as! NSScreen
+            playerWindow.setFrame(screen.frame, display: true, animate: false)
+        }
+        else if !isZoomKeyPressed && frameForNonFullscreenMode != nil {
+            playerWindow.setFrame(frameForNonFullscreenMode!, display: true, animate: false)
+            frameForNonFullscreenMode = nil
+        }
+    }
+    
     func removeAllObservers() {
         let defaultCenter = NSNotificationCenter.defaultCenter()
         for observer in self.notificationObservers {
@@ -122,6 +177,21 @@ class VideoWindowController: NSWindowController {
         if let observer = playbackStateObserver {
             observer.disposeObserver()
             playbackStateObserver = nil
+        }
+        
+        if let observer: AnyObject = keysMonitorLocal {
+            NSEvent.removeMonitor(observer)
+            keysMonitorLocal = nil
+        }
+
+        if let observer: AnyObject = keysMonitorGlobal {
+            NSEvent.removeMonitor(observer)
+            keysMonitorGlobal = nil
+        }
+        
+        if let trackingRect = self.trackingRect {
+            playerView!.removeTrackingRect(trackingRect)
+            self.trackingRect = nil
         }
     }
     
