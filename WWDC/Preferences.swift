@@ -10,6 +10,7 @@ import Cocoa
 
 let LocalVideoStoragePathPreferenceChangedNotification = "LocalVideoStoragePathPreferenceChangedNotification"
 let TranscriptPreferencesChangedNotification = "TranscriptPreferencesChangedNotification"
+let AutomaticRefreshPreferenceChangedNotification = "AutomaticRefreshPreferenceChangedNotification"
 
 private let _SharedPreferences = Preferences();
 

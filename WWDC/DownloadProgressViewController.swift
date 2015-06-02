@@ -143,6 +143,9 @@ class DownloadProgressViewController: NSViewController {
 	
 	private func isThisNotificationForMe(note: NSNotification!) -> Bool {
 		// we don't have a downloadable session, so this is clearly not for us
+        if session == nil {
+            return false
+        }
 		if session.hd_url == nil {
 			return false
 		}
@@ -162,6 +165,10 @@ class DownloadProgressViewController: NSViewController {
 	}
 	
 	@IBAction func download(sender: NSButton) {
+        if session == nil {
+            return
+        }
+        
 		if let url = session.hd_url {
 			VideoStore.SharedStore().download(url)
 		}

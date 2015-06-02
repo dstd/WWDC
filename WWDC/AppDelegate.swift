@@ -44,6 +44,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             tellUserAboutTheLiveEventThing()
         }
     }
+    
+    func applicationWillFinishLaunching(notification: NSNotification) {
+        // register custom URL scheme handler
+        URLSchemeHandler.SharedHandler().register()
+    }
 
     func applicationWillTerminate(aNotification: NSNotification) {
         // Insert code here to tear down your application

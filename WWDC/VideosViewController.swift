@@ -48,7 +48,7 @@ class VideosViewController: NSViewController, NSTableViewDelegate, NSTableViewDa
         
         tableView.gridColor = Theme.WWDCTheme.separatorColor
         
-        loadSessions()
+        loadSessions(refresh: false, quiet: false)
         
         let nc = NSNotificationCenter.defaultCenter()
         nc.addObserverForName(SessionProgressDidChangeNotification, object: nil, queue: nil) { _ in
@@ -62,6 +62,9 @@ class VideosViewController: NSViewController, NSTableViewDelegate, NSTableViewDa
         }
         nc.addObserverForName(VideoStoreDownloadedFilesChangedNotification, object: nil, queue: NSOperationQueue.mainQueue()) { _ in
             self.reloadTablePreservingSelection()
+        }
+        nc.addObserverForName(AutomaticRefreshPreferenceChangedNotification, object: nil, queue: NSOperationQueue.mainQueue()) { _ in
+            self.setupAutomaticSessionRefresh()
         }
     }
     
@@ -117,21 +120,50 @@ class VideosViewController: NSViewController, NSTableViewDelegate, NSTableViewDa
 
     // MARK: Session loading
     
-    func loadSessions() {
-        if let window = view.window {
-            GRLoadingView.showInWindow(window)
+    func loadSessions(#refresh: Bool, quiet: Bool) {
+        if !quiet {
+            if let window = view.window {
+                GRLoadingView.showInWindow(window)
+            }
         }
         
-        DataStore.SharedStore.fetchSessions() { success, sessions in
+        let completionHandler: DataStore.fetchSessionsCompletionHandler = { success, sessions in
             dispatch_async(dispatch_get_main_queue()) {
                 self.sessions = sessions
                 
                 self.splitManager?.restoreDividerPosition()
                 self.splitManager?.startSavingDividerPosition()
                 
-                GRLoadingView.dismissAllAfterDelay(0.3)
+                if !quiet {
+                    GRLoadingView.dismissAllAfterDelay(0.3)
+                }
+
+                self.setupAutomaticSessionRefresh()
             }
         }
+        
+        DataStore.SharedStore.fetchSessions(completionHandler, disableCache: refresh)
+    }
+    
+    @IBAction func refresh(sender: AnyObject?) {
+        loadSessions(refresh: true, quiet: false)
+    }
+    
+    var sessionListRefreshTimer: NSTimer?
+    
+    func setupAutomaticSessionRefresh() {
+        if Preferences.SharedPreferences().automaticRefreshEnabled {
+            if sessionListRefreshTimer == nil {
+                sessionListRefreshTimer = NSTimer.scheduledTimerWithTimeInterval(Preferences.SharedPreferences().automaticRefreshInterval, target: self, selector: "sessionListRefreshFromTimer", userInfo: nil, repeats: true)
+            }
+        } else {
+            sessionListRefreshTimer?.invalidate()
+            sessionListRefreshTimer = nil
+        }
+    }
+    
+    func sessionListRefreshFromTimer() {
+        loadSessions(refresh: true, quiet: true)
     }
     
     // MARK: TableView
@@ -244,6 +276,34 @@ class VideosViewController: NSViewController, NSTableViewDelegate, NSTableViewDa
         }
     }
 
+    @IBAction func copyURL(sender: NSMenuItem) {
+        var stringToCopy:String?
+        
+        if tableView.selectedRowIndexes.count < 2 && tableView.clickedRow >= 0 {
+            var session = displayedSessions[tableView.clickedRow]
+            stringToCopy = session.shareURL
+        } else {
+            stringToCopy = ""
+            for idx in tableView.selectedRowIndexes {
+                let session = self.displayedSessions[idx]
+                stringToCopy? += session.shareURL
+                if tableView.selectedRowIndexes.lastIndex != idx {
+                    stringToCopy? += "\n"
+                }
+            }
+        }
+        
+        if let string = stringToCopy {
+            let pb = NSPasteboard.generalPasteboard()
+            pb.clearContents()
+            pb.writeObjects([string])
+        }
+    }
+    
+    @IBAction func copy(sender: NSMenuItem) {
+        copyURL(sender)
+    }
+    
     // MARK: Navigation
 
     var detailsViewController: VideoDetailsViewController? {
@@ -301,7 +361,7 @@ class VideosViewController: NSViewController, NSTableViewDelegate, NSTableViewDa
             if let term = currentSearchTerm {
                 var term = term
                 if term != "" {
-                    var qualifiers = term.qualifierSearchParser_parseQualifiers(["year", "focus", "track", "downloaded"])
+                    var qualifiers = term.qualifierSearchParser_parseQualifiers(["year", "focus", "track", "downloaded", "description"])
                     indexOfLastSelectedRow = -1
                     return sessions.filter { session in
 
@@ -329,6 +389,14 @@ class VideosViewController: NSViewController, NSTableViewDelegate, NSTableViewDa
                         
                         if let track: String = qualifiers["track"] as? String {
                             if session.track.lowercaseString != track.lowercaseString {
+                                return false
+                            }
+                        }
+                        
+                        if let description: String = qualifiers["description"] as? String {
+                            if let range = session.description.rangeOfString(description, options: .CaseInsensitiveSearch | .DiacriticInsensitiveSearch, range: nil, locale: nil) {
+                                // continue...
+                            } else {
                                 return false
                             }
                         }
