@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
-<document type="com.apple.InterfaceBuilder3.Cocoa.Storyboard.XIB" version="3.0" toolsVersion="7706" systemVersion="14E26a" targetRuntime="MacOSX.Cocoa" propertyAccessControl="none" useAutolayout="YES" initialViewController="B8D-0N-5wS">
+<document type="com.apple.InterfaceBuilder3.Cocoa.Storyboard.XIB" version="3.0" toolsVersion="7706" systemVersion="14D136" targetRuntime="MacOSX.Cocoa" propertyAccessControl="none" useAutolayout="YES" initialViewController="B8D-0N-5wS">
     <dependencies>
         <plugIn identifier="com.apple.InterfaceBuilder.CocoaPlugin" version="7706"/>
     </dependencies>
@@ -400,6 +400,81 @@ CA
                                                 <action selector="sizeWindowToQuarterSize:" target="Ady-hI-5gd" id="55t-gH-E4A"/>
                                             </connections>
                                         </menuItem>
+                                        <menuItem isSeparatorItem="YES" id="tgl-vJ-UYN"/>
+                                        <menuItem title="Float on Top" id="jiJ-5O-Msq">
+                                            <modifierMask key="keyEquivalentModifierMask"/>
+                                            <menu key="submenu" title="Float on Top" id="J8J-3o-ZOa">
+                                                <items>
+                                                    <menuItem title="Never" id="lvL-Ty-l0f">
+                                                        <modifierMask key="keyEquivalentModifierMask"/>
+                                                        <connections>
+                                                            <action selector="changeFloatOnTop:" target="Ady-hI-5gd" id="dJS-zY-fWV"/>
+                                                        </connections>
+                                                    </menuItem>
+                                                    <menuItem title="While Playing" tag="1" id="q7T-r7-ZmA">
+                                                        <modifierMask key="keyEquivalentModifierMask"/>
+                                                        <connections>
+                                                            <action selector="changeFloatOnTop:" target="Ady-hI-5gd" id="U64-Q9-iLO"/>
+                                                        </connections>
+                                                    </menuItem>
+                                                    <menuItem title="Always" tag="2" id="KmH-kY-EXd">
+                                                        <modifierMask key="keyEquivalentModifierMask"/>
+                                                        <connections>
+                                                            <action selector="changeFloatOnTop:" target="Ady-hI-5gd" id="2jB-q0-FxE"/>
+                                                        </connections>
+                                                    </menuItem>
+                                                </items>
+                                            </menu>
+                                        </menuItem>
+                                        <menuItem title="Playback" id="wRU-oo-Wvy">
+                                            <modifierMask key="keyEquivalentModifierMask"/>
+                                            <menu key="submenu" title="Playback" id="NF8-JL-40L">
+                                                <items>
+                                                    <menuItem title="x1" tag="100" keyEquivalent="1" id="qUf-YO-ZIY">
+                                                        <modifierMask key="keyEquivalentModifierMask" option="YES"/>
+                                                        <connections>
+                                                            <action selector="changePlaybackRate:" target="Ady-hI-5gd" id="gRy-T6-gSf"/>
+                                                        </connections>
+                                                    </menuItem>
+                                                    <menuItem title="x1.2" tag="120" keyEquivalent="2" id="gn8-ZN-B8f">
+                                                        <modifierMask key="keyEquivalentModifierMask" option="YES"/>
+                                                        <connections>
+                                                            <action selector="changePlaybackRate:" target="Ady-hI-5gd" id="9Gd-xl-eln"/>
+                                                        </connections>
+                                                    </menuItem>
+                                                    <menuItem title="x1.4" tag="140" keyEquivalent="3" id="DmR-eo-egV">
+                                                        <modifierMask key="keyEquivalentModifierMask" option="YES"/>
+                                                        <connections>
+                                                            <action selector="changePlaybackRate:" target="Ady-hI-5gd" id="VzA-VW-WoK"/>
+                                                        </connections>
+                                                    </menuItem>
+                                                    <menuItem title="x1.6" tag="160" keyEquivalent="4" id="Qvo-Qq-oGd">
+                                                        <modifierMask key="keyEquivalentModifierMask" option="YES"/>
+                                                        <connections>
+                                                            <action selector="changePlaybackRate:" target="Ady-hI-5gd" id="IZF-Jl-ozA"/>
+                                                        </connections>
+                                                    </menuItem>
+                                                    <menuItem title="x1.8" tag="180" keyEquivalent="5" id="Kgm-v5-XYq">
+                                                        <modifierMask key="keyEquivalentModifierMask" option="YES"/>
+                                                        <connections>
+                                                            <action selector="changePlaybackRate:" target="Ady-hI-5gd" id="9G4-QT-tIY"/>
+                                                        </connections>
+                                                    </menuItem>
+                                                    <menuItem title="Jump -5s" tag="-5" keyEquivalent="" id="xe5-wd-DdI">
+                                                        <modifierMask key="keyEquivalentModifierMask"/>
+                                                        <connections>
+                                                            <action selector="jumpTime:" target="Ady-hI-5gd" id="qj3-wQ-h20"/>
+                                                        </connections>
+                                                    </menuItem>
+                                                    <menuItem title="Jump +5s" tag="5" keyEquivalent="" id="Par-Up-Xrr">
+                                                        <modifierMask key="keyEquivalentModifierMask"/>
+                                                        <connections>
+                                                            <action selector="jumpTime:" target="Ady-hI-5gd" id="1Pd-5O-gfk"/>
+                                                        </connections>
+                                                    </menuItem>
+                                                </items>
+                                            </menu>
+                                        </menuItem>
                                         <menuItem isSeparatorItem="YES" id="zVP-Fh-xQ4"/>
                                         <menuItem title="Minimize" keyEquivalent="m" id="OY7-WF-poV">
                                             <connections>
@@ -411,8 +486,8 @@ CA
                                                 <action selector="showDownloadsWindow:" target="Ady-hI-5gd" id="Orl-jy-Khh"/>
                                             </connections>
                                         </menuItem>
-                                        <menuItem title="Zoom" id="R4o-n2-Eq4">
-                                            <modifierMask key="keyEquivalentModifierMask"/>
+                                        <menuItem title="Zoom" keyEquivalent="" id="R4o-n2-Eq4">
+                                            <modifierMask key="keyEquivalentModifierMask" shift="YES" control="YES" command="YES"/>
                                             <connections>
                                                 <action selector="performZoom:" target="Ady-hI-5gd" id="DIl-cC-cCs"/>
                                             </connections>
@@ -793,7 +868,7 @@ CA
                             <stackView orientation="horizontal" alignment="centerY" horizontalHuggingPriority="249" verticalHuggingPriority="249" translatesAutoresizingMaskIntoConstraints="NO" id="NDa-qd-DsL">
                                 <rect key="frame" x="20" y="182" width="519" height="22"/>
                                 <beginningViews>
-                                    <button verticalHuggingPriority="50" translatesAutoresizingMaskIntoConstraints="NO" id="KY0-ql-QWs">
+                                    <button verticalHuggingPriority="50" misplaced="YES" translatesAutoresizingMaskIntoConstraints="NO" id="KY0-ql-QWs">
                                         <rect key="frame" x="14" y="200" width="141" height="32"/>
                                         <buttonCell key="cell" type="push" title="Watch HD Video" bezelStyle="rounded" alignment="center" borderStyle="border" imageScaling="proportionallyDown" inset="2" id="D3d-bZ-Zck">
                                             <behavior key="behavior" pushIn="YES" lightByBackground="YES" lightByGray="YES"/>
@@ -803,7 +878,7 @@ CA
                                             <action selector="watchHD:" target="1s0-2L-R2i" id="xqm-Kv-PmK"/>
                                         </connections>
                                     </button>
-                                    <button verticalHuggingPriority="50" tag="1" translatesAutoresizingMaskIntoConstraints="NO" id="COw-ui-l2a">
+                                    <button verticalHuggingPriority="50" misplaced="YES" tag="1" translatesAutoresizingMaskIntoConstraints="NO" id="COw-ui-l2a">
                                         <rect key="frame" x="155" y="200" width="118" height="32"/>
                                         <buttonCell key="cell" type="push" title="Watch Video" bezelStyle="rounded" alignment="center" borderStyle="border" imageScaling="proportionallyDown" inset="2" id="Xjs-Oy-GhI">
                                             <behavior key="behavior" pushIn="YES" lightByBackground="YES" lightByGray="YES"/>
@@ -813,7 +888,7 @@ CA
                                             <action selector="watch:" target="1s0-2L-R2i" id="d1x-9M-a2C"/>
                                         </connections>
                                     </button>
-                                    <button verticalHuggingPriority="50" tag="2" translatesAutoresizingMaskIntoConstraints="NO" id="Ff7-FM-rkW">
+                                    <button verticalHuggingPriority="50" misplaced="YES" tag="2" translatesAutoresizingMaskIntoConstraints="NO" id="Ff7-FM-rkW">
                                         <rect key="frame" x="273" y="200" width="111" height="32"/>
                                         <buttonCell key="cell" type="push" title="View Slides" bezelStyle="rounded" alignment="center" borderStyle="border" imageScaling="proportionallyDown" inset="2" id="UpZ-Ii-Qdp">
                                             <behavior key="behavior" pushIn="YES" lightByBackground="YES" lightByGray="YES"/>
@@ -823,7 +898,7 @@ CA
                                             <action selector="watchSlides:" target="1s0-2L-R2i" id="Bt3-zs-bNR"/>
                                         </connections>
                                     </button>
-                                    <button verticalHuggingPriority="50" tag="3" translatesAutoresizingMaskIntoConstraints="NO" id="Zfu-UV-fL8">
+                                    <button verticalHuggingPriority="50" misplaced="YES" tag="3" translatesAutoresizingMaskIntoConstraints="NO" id="Zfu-UV-fL8">
                                         <rect key="frame" x="384" y="200" width="161" height="32"/>
                                         <buttonCell key="cell" type="push" title="Mark as watched" bezelStyle="rounded" alignment="center" borderStyle="border" imageScaling="proportionallyDown" inset="2" id="pEg-S2-YVS">
                                             <behavior key="behavior" pushIn="YES" lightByBackground="YES" lightByGray="YES"/>

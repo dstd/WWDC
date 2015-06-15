@@ -64,6 +64,11 @@ class VideoWindowController: NSWindowController {
         }
     }
     
+    var selectedPlaybackRate: Float = 1.0
+    var notificationObservers: [AnyObject] = []
+    var playbackStateObserver: AVPlayerPlaybackStateObserver?
+    var keysMonitorLocal, keysMonitorGlobal: AnyObject?
+    
     private var activity: NSObjectProtocol?
     
     override func windowDidLoad() {
@@ -73,6 +78,9 @@ class VideoWindowController: NSWindowController {
 
         progressIndicator.startAnimation(nil)
         window?.backgroundColor = NSColor.blackColor()
+
+        self.updateFloatOnTopMenuState()
+        self.updatePlaybackRateMenuState()
 
         if let url = NSURL(string: videoURL!) {
             if event == nil {
@@ -95,6 +103,16 @@ class VideoWindowController: NSWindowController {
                         self.progressIndicator.stopAnimation(nil)
                     }
                 }
+                
+                self.updateFloatOnTopWindowState()
+                if let player = self.player {
+                    self.playbackStateObserver = AVPlayerPlaybackStateObserver(player: player, period: 1.0) { isPlaying in
+                        self.updateFloatOnTopWindowState()
+                        if isPlaying {
+                            self.player?.rate = self.selectedPlaybackRate
+                        }
+                    }
+                }
             }
         }
         
@@ -102,9 +120,9 @@ class VideoWindowController: NSWindowController {
             window?.title = "WWDC \(session.year) | \(session.title)"
             
             // pause playback when a live event starts playing
-            NSNotificationCenter.defaultCenter().addObserverForName(LiveEventWillStartPlayingNotification, object: nil, queue: nil) { _ in
+            self.notificationObservers.append(NSNotificationCenter.defaultCenter().addObserverForName(LiveEventWillStartPlayingNotification, object: nil, queue: nil) { _ in
                 self.player?.pause()
-            }
+            })
         }
         
         if let event = self.event {
@@ -113,7 +131,7 @@ class VideoWindowController: NSWindowController {
             loadEventVideo()
         }
         
-        NSNotificationCenter.defaultCenter().addObserverForName(NSWindowWillCloseNotification, object: self.window, queue: nil) { _ in
+        self.notificationObservers.append(NSNotificationCenter.defaultCenter().addObserverForName(NSWindowWillCloseNotification, object: self.window, queue: nil) { _ in
             if let activity = self.activity {
                 NSProcessInfo.processInfo().endActivity(activity)
             }
@@ -127,9 +145,119 @@ class VideoWindowController: NSWindowController {
             self.transcriptWC?.close()
             
             self.player?.pause()
+            
+            self.removeAllObservers()
+        })
+        
+        setupKeyHoldObservers()
+    }
+    
+    func removeAllObservers() {
+        let defaultCenter = NSNotificationCenter.defaultCenter()
+        for observer in self.notificationObservers {
+            defaultCenter.removeObserver(observer)
+        }
+        self.notificationObservers.removeAll(keepCapacity: false)
+        
+        if let observer: AnyObject = timeObserver {
+            player?.removeTimeObserver(observer)
+            timeObserver = nil
+        }
+        if let observer: AnyObject = boundaryObserver {
+            player?.removeTimeObserver(observer)
+            boundaryObserver = nil
+        }
+        
+        if let observer = playbackStateObserver {
+            observer.disposeObserver()
+            playbackStateObserver = nil
+        }
+        
+        if let observer: AnyObject = keysMonitorLocal {
+            NSEvent.removeMonitor(observer)
+            keysMonitorLocal = nil
+        }
+        
+        if let observer: AnyObject = keysMonitorGlobal {
+            NSEvent.removeMonitor(observer)
+            keysMonitorGlobal = nil
+        }
+        
+        if let trackingRect = self.trackingRect {
+            playerView!.removeTrackingRect(trackingRect)
+            self.trackingRect = nil
         }
     }
     
+    // MARK: - Monitoring for Quick Switch to Fullscreen feature
+    
+    func setupKeyHoldObservers() {
+        // use the mouse tracking as a workaround if global monitoring is not available
+        updateTrackingAreas()
+        
+        keysMonitorLocal = NSEvent.addLocalMonitorForEventsMatchingMask(NSEventMask.KeyDownMask|NSEventMask.FlagsChangedMask, handler: keyPressedLocal)
+        keysMonitorGlobal = NSEvent.addGlobalMonitorForEventsMatchingMask(NSEventMask.KeyDownMask|NSEventMask.FlagsChangedMask, handler: keyPressedGlobal)
+    }
+    
+    func keyPressedLocal(event: NSEvent!) -> NSEvent {
+        checkFullscreenQuickSwitch()
+        return event
+    }
+    
+    func keyPressedGlobal(event: NSEvent!) {
+        let mouse = NSEvent.mouseLocation()
+        let mouseInside = NSWindow.windowNumberAtPoint(mouse, belowWindowWithWindowNumber: 0) == playerWindow.windowNumber
+        if mouseInside {
+            let kVK_LeftArrow: UInt16 = 123
+            let kVK_RightArrow: UInt16 = 124
+            if event.keyCode == kVK_LeftArrow {
+                jumpTimeWithDelta(seconds: -5.0)
+                return
+            }
+            if event.keyCode == kVK_RightArrow {
+                jumpTimeWithDelta(seconds: 5.0)
+                return
+            }
+        }
+        
+        checkFullscreenQuickSwitch()
+    }
+    
+    func windowDidResize(notification: NSNotification) {
+        updateTrackingAreas()
+    }
+    
+    var trackingRect: NSTrackingRectTag?
+    func updateTrackingAreas() {
+        if let trackingRect = self.trackingRect {
+            playerView!.removeTrackingRect(trackingRect)
+            self.trackingRect = nil
+        }
+        
+        trackingRect = playerView!.addTrackingRect(playerView!.bounds, owner: self, userData: nil, assumeInside: false)
+    }
+    
+    override func mouseMoved(theEvent: NSEvent) {
+        checkFullscreenQuickSwitch()
+    }
+    
+    var frameForNonFullscreenMode: CGRect?
+    func checkFullscreenQuickSwitch() {
+        let mouse = NSEvent.mouseLocation()
+        let mouseInside = NSWindow.windowNumberAtPoint(mouse, belowWindowWithWindowNumber: 0) == playerWindow.windowNumber
+        let isZoomKeyPressed = mouseInside && NSEvent.modifierFlags() & .ControlKeyMask != nil
+        
+        if isZoomKeyPressed && frameForNonFullscreenMode == nil {
+            frameForNonFullscreenMode = playerWindow.frame
+            let screen = NSScreen.screens()?.first as! NSScreen
+            playerWindow.setFrame(screen.frame, display: true, animate: false)
+        }
+        else if !isZoomKeyPressed && frameForNonFullscreenMode != nil {
+            playerWindow.setFrame(frameForNonFullscreenMode!, display: true, animate: false)
+            frameForNonFullscreenMode = nil
+        }
+    }
+
     private func loadEventVideo() {
         if let url = event!.appropriateURL {
             
@@ -228,6 +356,10 @@ class VideoWindowController: NSWindowController {
 
             self.session!.progress = progress
             self.session!.currentPosition = CMTimeGetSeconds(currentTime)
+
+            if Preferences.SharedPreferences().floatOnTopStyle == .WhilePlaying {
+                self.playbackStateObserver?.startObserving()
+            }
         }
     }
     
@@ -312,17 +444,105 @@ class VideoWindowController: NSWindowController {
         sizeWindowTo(0.25)
     }
     
-    deinit {
-        NSNotificationCenter.defaultCenter().removeObserver(self)
-        
-        if let observer: AnyObject = timeObserver {
-            player?.removeTimeObserver(observer)
-        }
-        if let observer: AnyObject = boundaryObserver {
-            player?.removeTimeObserver(observer)
+    @IBAction func changeFloatOnTop(sender: AnyObject?) {
+        if let menuItem = sender as? NSMenuItem {
+            if let floatOnTopStyle = Preferences.WindowFloatOnTopStyle(rawValue: menuItem.tag) {
+                Preferences.SharedPreferences().floatOnTopStyle = floatOnTopStyle
+                
+                self.updateFloatOnTopWindowState()
+                self.updateFloatOnTopMenuState()
+                
+                if floatOnTopStyle == .WhilePlaying {
+                    self.playbackStateObserver?.startObserving()
+                }
+                else {
+                    self.playbackStateObserver?.stopObserving()
+                }
+            }
         }
     }
     
+    func updateFloatOnTopMenuState() {
+        if let mainMenu = NSApplication.sharedApplication().mainMenu {
+            self.updateFloatOnTopMenuState(inMenu: mainMenu)
+        }
+    }
+    
+    func updateFloatOnTopMenuState(inMenu menu: NSMenu) {
+        var floatOnTopStyle = Preferences.SharedPreferences().floatOnTopStyle.rawValue
+        for subAnyItem in menu.itemArray {
+            if let subItem = subAnyItem as? NSMenuItem {
+                if subItem.submenu != nil {
+                    updateFloatOnTopMenuState(inMenu: subItem.submenu!)
+                }
+                else if subItem.action == "changeFloatOnTop:" {
+                    subItem.state = subItem.tag == floatOnTopStyle ? NSOnState : NSOffState
+                }
+            }
+        }
+    }
+    
+    func updateFloatOnTopWindowState() {
+        switch Preferences.SharedPreferences().floatOnTopStyle {
+        case .Never:
+            self.window?.level = Int(CGWindowLevelForKey(Int32(kCGNormalWindowLevelKey)));
+        case .Always:
+            self.window?.level = Int(CGWindowLevelForKey(Int32(kCGMainMenuWindowLevelKey)))
+        case .WhilePlaying:
+            if let player = self.player {
+                let isPlaying = player.rate != 0
+                self.window?.level = isPlaying ? Int(CGWindowLevelForKey(Int32(kCGMainMenuWindowLevelKey)))
+                    : Int(CGWindowLevelForKey(Int32(kCGNormalWindowLevelKey)))
+            }
+        }
+    }
+    
+    @IBAction func changePlaybackRate(sender: AnyObject?) {
+        if let menuItem = sender as? NSMenuItem {
+            let rate = Float(menuItem.tag) / 100.0
+            selectedPlaybackRate = rate
+            if self.player?.rate != 0 {
+                self.player?.rate = rate
+            }
+            
+            updatePlaybackRateMenuState()
+        }
+    }
+    
+    func updatePlaybackRateMenuState() {
+        if let mainMenu = NSApplication.sharedApplication().mainMenu {
+            self.updatePlaybackRateMenuState(inMenu: mainMenu)
+        }
+    }
+    
+    func updatePlaybackRateMenuState(inMenu menu: NSMenu) {
+        for subAnyItem in menu.itemArray {
+            if let subItem = subAnyItem as? NSMenuItem {
+                if subItem.submenu != nil {
+                    updatePlaybackRateMenuState(inMenu: subItem.submenu!)
+                }
+                else if subItem.action == "changePlaybackRate:" {
+                    let rate = Float(subItem.tag) / 100.0
+                    subItem.state = rate == selectedPlaybackRate ? NSOnState : NSOffState
+                }
+            }
+        }
+    }
+    
+    @IBAction func jumpTime(sender: AnyObject?) {
+        if let menuItem = sender as? NSMenuItem {
+            let delta = Double(menuItem.tag)
+            jumpTimeWithDelta(seconds: delta)
+        }
+    }
+    
+    func jumpTimeWithDelta(seconds delta: Double) {
+        if let player = self.player {
+            var position = player.currentTime()
+            position = CMTimeMakeWithSeconds(CMTimeGetSeconds(position) + delta, position.timescale)
+            player.seekToTime(position)
+        }
+    }
 }
 
 private extension NSProcessInfo {
